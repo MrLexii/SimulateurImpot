@@ -1,340 +1,453 @@
 package com.kerware.simulateur;
 
 /**
- * Cette classe permet de simuler le calcul de l'impôt sur le revenu
- * en France pour l'année 2024 sur les revenus de l'année 2023.
- * Elle prend en charge différentes situations familiales, le nombre d'enfants,
- * la situation de parent isolé, ainsi que les enfants en situation de handicap.
+ *  Cette classe permet de simuler le calcul de l'impôt sur le revenu
+ *  en France pour l'année 2024 sur les revenus de l'année 2023 pour
+ *  des cas simples de contribuables célibataires, mariés, divorcés, veufs
+ *  ou pacsés avec ou sans enfants à charge ou enfants en situation de handicap
+ *  et parent isolé.
  *
- * Ce code est un exemple de refactoring d'un legacy code pour le rendre plus
- * maintenable tout en conservant sa logique d'origine.
- */
+ *  EXEMPLE DE CODE DE TRES MAUVAISE QUALITE FAIT PAR UN DEBUTANT
+ *
+ *  Pas de lisibilité, pas de commentaires, pas de tests
+ *  Pas de documentation, pas de gestion des erreurs
+ *  Pas de logique métier, pas de modularité
+ *  Pas de gestion des exceptions, pas de gestion des logs
+ *  Principe "Single Responsability" non respecté
+ *  Pas de traçabilité vers les exigences métier
+ *
+ *  Pourtant ce code fonctionne correctement
+ *  Il s'agit d'un "legacy" code qui est difficile à maintenir
+ *  L'auteur n'a pas fourni de tests unitaires
+ **/
+
 public class Simulateur {
 
-    // Tranches d'imposition pour le barème progressif (2023)
-    private final int[] tranches = {0, 11294, 28797, 82341, 177106, Integer.MAX_VALUE};
-    private final double[] tauxTranches = {0.0, 0.11, 0.30, 0.41, 0.45};
 
-    // Tranches et taux pour la Contribution Exceptionnelle sur les Hauts Revenus (CEHR)
-    private final int[] tranchesCEHR = {0, 250000, 500000, 1000000, Integer.MAX_VALUE};
-    private final double[] tauxCEHRCelibataire = {0.0, 0.03, 0.04, 0.04};
-    private final double[] tauxCEHRCouple = {0.0, 0.0, 0.03, 0.04};
+    // Les limites des tranches de revenus imposables
+    private int l00 = 0 ;
+    private int l01 = 11294;
+    private int l02 = 28797;
+    private int l03 = 82341;
+    private int l04 = 177106;
+    private int l05 = Integer.MAX_VALUE;
 
-    // Paramètres pour l'abattement de 10% avec minimum et maximum
-    private final double tauxAbattement = 0.10;
-    private final int abattementMin = 495;
-    private final int abattementMax = 14171;
+    private int[] limites = new int[6];
 
-    // Paramètres pour la décote
-    private final double seuilDecoteCelibataire = 1929;
-    private final double seuilDecoteCouple = 3191;
-    private final double decoteMaxCelibataire = 873;
-    private final double decoteMaxCouple = 1444;
-    private final double tauxDecote = 0.4525;
+    // Les taux d'imposition par tranche
+    private double t00 = 0.0;
+    private double t01 = 0.11;
+    private double t02 = 0.3;
+    private double t03 = 0.41;
+    private double t04 = 0.45;
 
-    // Plafond de baisse d’impôt liée au quotient familial
-    private final double plafondParDemiPart = 1759;
+    private double[] taux = new double[5];
 
-    // Données d'entrée
-    private int revenu1;
-    private int revenu2;
-    private int nbEnfants;
-    private int nbEnfantsHandicap;
-    private boolean parentIsole;
-    private SituationFamiliale situation;
+    // Les limites des tranches pour la contribution exceptionnelle sur les hauts revenus
+    private int lce00 = 0;
+    private int lce01 = 250000;
+    private int lce02 = 500000;
+    private int lce03 = 1000000;
+    private int lce04 = Integer.MAX_VALUE;
 
-    // Données calculées
-    private double revenuFiscalRef;
-    private double abattement;
-    private double partsFiscales;
-    private double partsContribuable;
-    private double impotBrut;
-    private double decote;
-    private double impotNet;
-    private double contributionExceptionnelle;
+    private int[] limitesCEHR = new int[5];
 
-    // ---------------------- GETTERS POUR TESTS ----------------------
+    // Les taux de la contribution exceptionnelle sur les hauts revenus pour les celibataires
+    private double tce00 = 0.0;
+    private double tce01 = 0.03;
+    private double tce02 = 0.04;
+    private double tce03 = 0.04;
 
-    public double getRevenuReference() { return revenuFiscalRef; }
-    public double getDecote() { return decote; }
-    public double getAbattement() { return abattement; }
-    public double getNbParts() { return partsFiscales; }
-    public double getImpotAvantDecote() { return impotBrut; }
-    public double getImpotNet() { return impotNet; }
-    public double getcontributionExceptionnelle() { return contributionExceptionnelle; }
+    private double[] tauxCEHRCelibataire = new double[4];
 
-    /**
-     * Calcule l'impôt sur le revenu pour un foyer fiscal donné.
-     * Suit toutes les étapes du calcul : abattement, parts, plafonnement,
-     * décote et contribution exceptionnelle.
-     */
-    public int calculImpot(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
-        
-    	System.out.println("=========== DÉBUT DU CALCUL DE L'IMPÔT ===========");
-        System.out.printf("Entrées : Revenu1 = %d €, Revenu2 = %d €, Situation = %s, Enfants = %d, Enfants handicapés = %d, Parent isolé = %s%n",
-                rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+    // Les taux de la contribution exceptionnelle sur les hauts revenus pour les couples
+    private double tce00C = 0.0;
+    private double tce01C = 0.0;
+    private double tce02C = 0.03;
+    private double tce03C = 0.04;
 
-    	
-    	// Étape 1 : Vérification des données d’entrée
-        validations(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+    private double[] tauxCEHRCouple = new double[4];
 
-        // Étape 2 : Stockage des données d'entrée dans les variables de classe
-        initialisation(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+    // Abattement
+    private  int lAbtMax = 14171;
+    private  int lAbtMin = 495;
+    private double tAbt = 0.1;
 
-        // Étape 3 : Calcul de l’abattement de 10% (avec plancher/plafond)
-        calculAbattement();
+    // Plafond de baisse maximal par demi part
+    private double plafDemiPart = 1759;
 
-        System.out.printf("→ Abattement total : %.2f €%n", abattement);
-        System.out.printf("→ Revenu fiscal de référence : %.2f €%n", revenuFiscalRef);
+    private double seuilDecoteDeclarantSeul = 1929;
+    private double seuilDecoteDeclarantCouple    = 3191;
 
-        // Étape 4 : Calcul du nombre de parts fiscales
-        calculPartsFiscal();
+    private double decoteMaxDeclarantSeul = 873;
+    private double decoteMaxDeclarantCouple = 1444;
+    private double tauxDecote = 0.4525;
 
-        System.out.printf("→ Parts contribuable : %.2f%n", partsContribuable);
-        System.out.printf("→ Parts fiscales (après majorations) : %.2f%n", partsFiscales);
+    // revenu net
+    private int rNetDecl1 = 0;
+    private int rNetDecl2 = 0;
+    // nb enfants
+    private int nbEnf = 0;
+    // nb enfants handicapés
+    private int nbEnfH = 0;
 
-        // Étape 5 : Calcul de la contribution exceptionnelle sur les hauts revenus
-        calculContributionExceptionnelle();
+    // revenu fiscal de référence
+    private double rFRef = 0;
 
-        System.out.printf("→ Contribution exceptionnelle CEHR : %.2f €%n", contributionExceptionnelle);
+    // revenu imposable
+    private double rImposable = 0;
 
-        // Étape 6 : Calcul de l’impôt sans plafonnement du quotient familial
-        double impDec1 = calculImpôtAvantPlafond();
+    // abattement
+    private double abt = 0;
 
-        System.out.printf("→ Impôt sans quotient familial : %.2f €%n", impDec1);
+    // nombre de parts des  déclarants
+    private double nbPtsDecl = 0;
+    // nombre de parts du foyer fiscal
+    private double nbPts = 0;
 
-        // Étape 7 : Calcul de l’impôt avec quotient familial
-        double impFoy = calculImpôtFoyer();
+    // decote
+    private double decote = 0;
+    // impôt des déclarants
+    private double mImpDecl = 0;
+    // impôt du foyer fiscal
+    private double mImp = 0;
+    private double mImpAvantDecote = 0;
+    // parent isolé
+    private boolean parIso = false;
+    // Contribution exceptionnelle sur les hauts revenus
+    private double contribExceptionnelle = 0;
 
-        System.out.printf("→ Impôt avec quotient familial : %.2f €%n", impFoy);
+    // Getters pour adapter le code legacy pour les tests unitaires
 
-        // Étape 8 : Appliquer le plafonnement du quotient familial
-        impFoy = calculPlafonnementQuotientFamilial(impDec1, impFoy);
-
-        System.out.printf("→ Impôt après plafonnement quotient familial : %.2f €%n", impFoy);
-
-        // Étape 9 : Appliquer la décote selon la situation
-        double impotFinal = calculDecote(impFoy);
-
-        System.out.printf("→ Décote appliquée : %.2f €%n", decote);
-        System.out.printf("→ Impôt net à payer (incl. CEHR) : %.2f €%n", impotFinal);
-
-        System.out.println("=========== FIN DU CALCUL ===========\n");
-        
-        // Étape 10 : Retourner le montant final de l’impôt (arrondi)
-        return (int) impotFinal;
+    public double getRevenuReference() {
+        return rFRef;
     }
 
-    /**
-     * Valide les entrées fournies pour le calcul de l'impôt.
-     *
-     * @param rev1 Revenu du déclarant 1
-     * @param rev2 Revenu du déclarant 2
-     * @param sit Situation familiale
-     * @param enfants Nombre d’enfants à charge
-     * @param enfantsHandicapes Nombre d’enfants handicapés à charge
-     * @param isole Indique si le déclarant est un parent isolé
-     * @throws IllegalArgumentException si une des validations échoue
-     */
-    private void validations(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
-        if (rev1 < 0 || rev2 < 0)
-            throw new IllegalArgumentException("Les revenus ne peuvent pas être négatifs.");
-        if (sit == null)
-            throw new IllegalArgumentException("La situation familiale doit être renseignée.");
-        if (enfants < 0 || enfantsHandicapes < 0)
-            throw new IllegalArgumentException("Le nombre d'enfants ne peut pas être négatif.");
-        if (enfantsHandicapes > enfants)
-            throw new IllegalArgumentException("Le nombre d'enfants handicapés ne peut pas dépasser le nombre total d'enfants.");
-        if (enfants > 7)
-            throw new IllegalArgumentException("Le simulateur ne prend pas en charge plus de 7 enfants.");
-        if ((sit == SituationFamiliale.MARIE || sit == SituationFamiliale.PACSE) && isole)
-            throw new IllegalArgumentException("Un parent isolé ne peut pas être marié ou pacsé.");
-        if ((sit == SituationFamiliale.CELIBATAIRE || sit == SituationFamiliale.DIVORCE || sit == SituationFamiliale.VEUF) && rev2 > 0)
-            throw new IllegalArgumentException("Un déclarant seul ne peut avoir de second revenu.");
+    public double getDecote() {
+        return decote;
     }
 
-    /**
-     * Initialise les variables d'instance avec les valeurs d'entrée.
-     *
-     * @param rev1 Revenu du déclarant 1
-     * @param rev2 Revenu du déclarant 2
-     * @param sit Situation familiale
-     * @param enfants Nombre d’enfants à charge
-     * @param enfantsHandicapes Nombre d’enfants handicapés à charge
-     * @param isole Vrai si le déclarant est un parent isolé
-     */
-    private void initialisation(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
-        this.revenu1 = rev1;
-        this.revenu2 = rev2;
-        this.nbEnfants = enfants;
-        this.nbEnfantsHandicap = enfantsHandicapes;
-        this.parentIsole = isole;
-        this.situation = sit;
+
+    public double getAbattement() {
+        return abt;
     }
 
-    /**
-     * Calcule l’abattement de 10 % sur les revenus et met à jour le revenu fiscal de référence.
-     * Ne retourne rien mais affecte les champs {@code abattement} et {@code revenuFiscalRef}.
-     * EXIGENCE : L'abattement est appliqué à chaque revenu du déclarant avec un minimum de 495€ et un maximum de 14171€.
-     */
-    private void calculAbattement() {
-        long abattement1 = Math.round(revenu1 * tauxAbattement);
-        long abattement2 = Math.round(revenu2 * tauxAbattement);
+    public double getNbParts() {
+        return nbPts;
+    }
 
-        abattement1 = Math.min(Math.max(abattement1, abattementMin), abattementMax);
-        if (situation == SituationFamiliale.MARIE || situation == SituationFamiliale.PACSE) {
-            abattement2 = Math.min(Math.max(abattement2, abattementMin), abattementMax);
-        } else {
-            abattement2 = 0;
+    public double getImpotAvantDecote() {
+        return mImpAvantDecote;
+    }
+
+    public double getImpotNet() {
+        return mImp;
+    }
+
+    public int getRevenuNetDeclatant1() {
+        return rNetDecl1;
+    }
+
+    public int getRevenuNetDeclatant2() {
+        return rNetDecl2;
+    }
+
+    public double getContribExceptionnelle() {
+        return contribExceptionnelle;
+    }
+
+
+    // Fonction de calcul de l'impôt sur le revenu net en France en 2024 sur les revenu 2023
+
+    public int calculImpot( int revNetDecl1, int revNetDecl2, SituationFamiliale sitFam, int nbEnfants, int nbEnfantsHandicapes, boolean parentIsol) {
+
+        // Préconditions
+        if ( revNetDecl1  < 0 || revNetDecl2 < 0 ) {
+            throw new IllegalArgumentException("Le revenu net ne peut pas être négatif");
         }
 
-        abattement = abattement1 + abattement2;
-        revenuFiscalRef = Math.max(0, revenu1 + revenu2 - abattement);
-    }
-
-    /**
-     * Calcule le nombre de parts fiscales selon la situation familiale et les enfants.
-     * Ne retourne rien mais met à jour les champs {@code partsFiscales} et {@code partsContribuable}.
-     */
-    private void calculPartsFiscal() {
-        // Base : 1 part ou 2 parts selon la situation
-        partsContribuable = (situation == SituationFamiliale.MARIE || situation == SituationFamiliale.PACSE) ? 2 : 1;
-
-        // Ajout des parts liées aux enfants
-        if (nbEnfants <= 2) {
-            partsFiscales = partsContribuable + nbEnfants * 0.5;
-        } else {
-            partsFiscales = partsContribuable + 1.0 + (nbEnfants - 2);
+        if ( nbEnfants < 0 ) {
+            throw new IllegalArgumentException("Le nombre d'enfants ne peut pas être négatif");
         }
 
-        // Majoration pour parent isolé avec enfant
-        if (parentIsole && nbEnfants > 0) {
-            partsFiscales += 0.5;
+        if ( nbEnfantsHandicapes < 0 ) {
+            throw new IllegalArgumentException("Le nombre d'enfants handicapés ne peut pas être négatif");
         }
 
-        // Majoration pour veuf(ve) avec enfant
-        if (situation == SituationFamiliale.VEUF && nbEnfants > 0) {
-            partsFiscales += 1.0;
+        if ( sitFam == null ) {
+            throw new IllegalArgumentException("La situation familiale ne peut pas être null");
         }
 
-        // Majoration pour enfants handicapés
-        partsFiscales += nbEnfantsHandicap * 0.5;
-    }
+        if ( nbEnfantsHandicapes > nbEnfants ) {
+            throw new IllegalArgumentException("Le nombre d'enfants handicapés ne peut pas être supérieur au nombre d'enfants");
+        }
 
-    /**
-     * Calcule la contribution exceptionnelle sur les hauts revenus (CEHR) selon les tranches.
-     * Ne retourne rien mais met à jour le champ {@code contributionExceptionnelle}.
-     * EXIGENCE : La CEHR est calculée en fonction des tranches de revenus et du statut du contribuable (célibataire ou couple).
-     */
-    private void calculContributionExceptionnelle() {
-        contributionExceptionnelle = 0;
+        if ( nbEnfants > 7 ) {
+            throw new IllegalArgumentException("Le nombre d'enfants ne peut pas être supérieur à 7");
+        }
+
+        if ( parentIsol && ( sitFam == SituationFamiliale.MARIE || sitFam == SituationFamiliale.PACSE ) ) {
+            throw new IllegalArgumentException("Un parent isolé ne peut pas être marié ou pacsé");
+        }
+
+        boolean seul = sitFam == SituationFamiliale.CELIBATAIRE || sitFam == SituationFamiliale.DIVORCE || sitFam == SituationFamiliale.VEUF;
+        if (  seul && revNetDecl2 > 0 ) {
+            throw new IllegalArgumentException("Un célibataire, un divorcé ou un veuf ne peut pas avoir de revenu pour le déclarant 2");
+        }
+
+        // Initialisation des variables
+
+        rNetDecl1 = revNetDecl1;
+        rNetDecl2 = revNetDecl2;
+
+        nbEnf = nbEnfants;
+        nbEnfH = nbEnfantsHandicapes;
+        parIso = parentIsol;
+
+        limites[0] = l00;
+        limites[1] = l01;
+        limites[2] = l02;
+        limites[3] = l03;
+        limites[4] = l04;
+        limites[5] = l05;
+
+        taux[0] = t00;
+        taux[1] = t01;
+        taux[2] = t02;
+        taux[3] = t03;
+        taux[4] = t04;
+
+        limitesCEHR[0] = lce00;
+        limitesCEHR[1] = lce01;
+        limitesCEHR[2] = lce02;
+        limitesCEHR[3] = lce03;
+        limitesCEHR[4] = lce04;
+
+        tauxCEHRCelibataire[0] = tce00;
+        tauxCEHRCelibataire[1] = tce01;
+        tauxCEHRCelibataire[2] = tce02;
+        tauxCEHRCelibataire[3] = tce03;
+
+        tauxCEHRCouple[0] = tce00C;
+        tauxCEHRCouple[1] = tce01C;
+        tauxCEHRCouple[2] = tce02C;
+        tauxCEHRCouple[3] = tce03C;
+
+        System.out.println("--------------------------------------------------");
+        System.out.println( "Revenu net declarant1 : " + rNetDecl1 );
+        System.out.println( "Revenu net declarant2 : " + rNetDecl2 );
+        System.out.println( "Situation familiale : " + sitFam.name() );
+
+        // Abattement
+        // EXIGENCE : EXG_IMPOT_02
+        long abt1 = Math.round(rNetDecl1 * tAbt);
+        long abt2 = Math.round(rNetDecl2 * tAbt);
+
+        if (abt1 > lAbtMax) {
+            abt1 = lAbtMax;
+        }
+        if ( sitFam == SituationFamiliale.MARIE || sitFam == SituationFamiliale.PACSE ) {
+            if (abt2 > lAbtMax) {
+                abt2 = lAbtMax;
+            }
+        }
+
+        if (abt1 < lAbtMin) {
+            abt1 = lAbtMin;
+        }
+
+        if ( sitFam == SituationFamiliale.MARIE || sitFam == SituationFamiliale.PACSE ) {
+            if (abt2 < lAbtMin) {
+                abt2 = lAbtMin;
+            }
+        }
+
+        abt = abt1 + abt2;
+        System.out.println( "Abattement : " + abt );
+
+        rFRef = rNetDecl1 + revNetDecl2 - abt;
+        if ( rFRef < 0 ) {
+            rFRef = 0;
+        }
+
+        System.out.println( "Revenu fiscal de référence : " + rFRef );
+
+
+        // parts déclarants
+        // EXIG  : EXG_IMPOT_03
+        switch ( sitFam ) {
+            case CELIBATAIRE:
+                nbPtsDecl = 1;
+                break;
+            case MARIE:
+                nbPtsDecl = 2;
+                break;
+            case DIVORCE:
+                nbPtsDecl = 1;
+                break;
+            case VEUF:
+                nbPtsDecl = 1;
+                break;
+            case PACSE:
+                nbPtsDecl = 2;
+                break;
+        }
+
+        System.out.println( "Nombre d'enfants  : " + nbEnf );
+        System.out.println( "Nombre d'enfants handicapés : " + nbEnfH );
+
+        // parts enfants à charge
+        if ( nbEnf <= 2 ) {
+            nbPts = nbPtsDecl + nbEnf * 0.5;
+        } else if ( nbEnf > 2 ) {
+            nbPts = nbPtsDecl+  1.0 + ( nbEnf - 2 );
+        }
+
+        // parent isolé
+
+        System.out.println( "Parent isolé : " + parIso );
+
+        if ( parIso ) {
+            if ( nbEnf > 0 ){
+                nbPts = nbPts + 0.5;
+            }
+        }
+
+        // Veuf avec enfant
+        if ( sitFam == SituationFamiliale.VEUF && nbEnf > 0 ) {
+            nbPts = nbPts + 1;
+        }
+
+        // enfant handicapé
+        nbPts = nbPts + nbEnfH * 0.5;
+
+        System.out.println( "Nombre de parts : " + nbPts );
+
+        // EXIGENCE : EXG_IMPOT_07:
+        // Contribution exceptionnelle sur les hauts revenus
+        contribExceptionnelle = 0;
         int i = 0;
         do {
-            if (revenuFiscalRef >= tranchesCEHR[i] && revenuFiscalRef < tranchesCEHR[i + 1]) {
-                contributionExceptionnelle += (revenuFiscalRef - tranchesCEHR[i]) *
-                        (partsContribuable == 1 ? tauxCEHRCelibataire[i] : tauxCEHRCouple[i]);
+            if ( rFRef >= limitesCEHR[i] && rFRef < limitesCEHR[i+1] ) {
+                if ( nbPtsDecl == 1 ) {
+                    contribExceptionnelle += ( rFRef - limitesCEHR[i] ) * tauxCEHRCelibataire[i];
+                } else {
+                    contribExceptionnelle += ( rFRef - limitesCEHR[i] ) * tauxCEHRCouple[i];
+                }
                 break;
             } else {
-                contributionExceptionnelle += (tranchesCEHR[i + 1] - tranchesCEHR[i]) *
-                        (partsContribuable == 1 ? tauxCEHRCelibataire[i] : tauxCEHRCouple[i]);
+                if ( nbPtsDecl == 1 ) {
+                    contribExceptionnelle += ( limitesCEHR[i+1] - limitesCEHR[i] ) * tauxCEHRCelibataire[i];
+                } else {
+                    contribExceptionnelle += ( limitesCEHR[i+1] - limitesCEHR[i] ) * tauxCEHRCouple[i];
+                }
             }
             i++;
-        } while (i < tranchesCEHR.length - 1);
-        contributionExceptionnelle = Math.round(contributionExceptionnelle);
-    }
+        } while( i < 5);
 
-    /**
-     * Calcule l’impôt du foyer selon la méthode de référence (sans quotient familial).
-     *
-     * @return Montant de l'impôt brut avant application du quotient familial
-     * EXIGENCE : La CEHR est calculée en fonction des tranches de revenus et du statut du contribuable (célibataire ou couple).
-     */
-    private double calculImpôtAvantPlafond() {
-        double rImposable = revenuFiscalRef / partsContribuable;
-        double mImpDecl = 0;
-        int i = 0;
+        contribExceptionnelle = Math.round( contribExceptionnelle );
+        System.out.println( "Contribution exceptionnelle sur les hauts revenus : " + contribExceptionnelle );
+
+        // Calcul impôt des declarants
+        // EXIGENCE : EXG_IMPOT_04
+        rImposable = rFRef / nbPtsDecl ;
+
+        mImpDecl = 0;
+
+        i = 0;
         do {
-            if (rImposable >= tranches[i] && rImposable < tranches[i + 1]) {
-                mImpDecl += (rImposable - tranches[i]) * tauxTranches[i];
+            if ( rImposable >= limites[i] && rImposable < limites[i+1] ) {
+                mImpDecl += ( rImposable - limites[i] ) * taux[i];
                 break;
             } else {
-                mImpDecl += (tranches[i + 1] - tranches[i]) * tauxTranches[i];
+                mImpDecl += ( limites[i+1] - limites[i] ) * taux[i];
             }
             i++;
-        } while (i < tranches.length - 1);
-        mImpDecl *= partsContribuable;
-        mImpDecl = Math.round(mImpDecl);
-        return mImpDecl;
-    }
+        } while( i < 5);
 
-    /**
-     * Calcule l’impôt du foyer en tenant compte du quotient familial (revenu par part).
-     *
-     * @return Montant de l’impôt calculé avec le quotient familial
-     * EXIGENCE : L’impôt doit être calculé par part fiscale en tenant compte des tranches d’imposition et du quotient familial.
-     */
-    private double calculImpôtFoyer() {
-        double rffImposable = revenuFiscalRef / partsFiscales;
-        double ffmImp = 0;
-        int i = 0;
+        mImpDecl = mImpDecl * nbPtsDecl;
+        mImpDecl = Math.round( mImpDecl );
+
+        System.out.println( "Impôt brut des déclarants : " + mImpDecl );
+
+        // Calcul impôt foyer fiscal complet
+        // EXIGENCE : EXG_IMPOT_04
+        rImposable =  rFRef / nbPts;
+        mImp = 0;
+        i = 0;
+
         do {
-            if (rffImposable >= tranches[i] && rffImposable < tranches[i + 1]) {
-                ffmImp += (rffImposable - tranches[i]) * tauxTranches[i];
+            if ( rImposable >= limites[i] && rImposable < limites[i+1] ) {
+                mImp += ( rImposable - limites[i] ) * taux[i];
                 break;
             } else {
-                ffmImp += (tranches[i + 1] - tranches[i]) * tauxTranches[i];
+                mImp += ( limites[i+1] - limites[i] ) * taux[i];
             }
             i++;
-        } while (i < tranches.length - 1);
-        ffmImp *= partsFiscales;
-        ffmImp = Math.round(ffmImp);
-        return ffmImp;
-    }
+        } while( i < 5);
 
-    /**
-     * Applique le plafonnement du quotient familial si l’avantage fiscal est trop élevé.
-     *
-     * @param impDec1 Impôt sans quotient familial
-     * @param impFoy Impôt avec quotient familial
-     * @return Impôt ajusté après application du plafonnement
-     * EXIGENCE : Le plafonnement est appliqué si l'avantage fiscal dépasse un certain seuil par demi-part fiscale.
-     */
-    private double calculPlafonnementQuotientFamilial(double impDec1, double impFoy) {
-        double baisseImpot = impDec1 - impFoy;
-        double ecartPts = partsFiscales - partsContribuable;
-        double plafond = (ecartPts / 0.5) * plafondParDemiPart;
+        mImp = mImp * nbPts;
+        mImp = Math.round( mImp );
 
-        if (baisseImpot >= plafond) {
-            impFoy = impDec1 - plafond;
+        System.out.println( "Impôt brut du foyer fiscal complet : " + mImp );
+
+        // Vérification de la baisse d'impôt autorisée
+        // EXIGENCE : EXG_IMPOT_05
+        // baisse impot
+
+        double baisseImpot = mImpDecl - mImp;
+
+        System.out.println( "Baisse d'impôt : " + baisseImpot );
+
+        // dépassement plafond
+        double ecartPts = nbPts - nbPtsDecl;
+
+        double plafond = (ecartPts / 0.5) * plafDemiPart;
+
+        System.out.println( "Plafond de baisse autorisée " + plafond );
+
+        if ( baisseImpot >= plafond ) {
+            mImp = mImpDecl - plafond;
         }
 
-        impotBrut = impFoy;
-        return impFoy;
-    }
+        System.out.println( "Impôt brut après plafonnement avant decote : " + mImp );
+        mImpAvantDecote = mImp;
 
-    /**
-     * Calcule la décote si l’impôt est inférieur à un certain seuil, puis ajoute la CEHR.
-     *
-     * @param impFoy Impôt après quotient familial et plafonnement
-     * @return Impôt net à payer après décote et CEHR
-     * EXIGENCE : Si l’impôt est inférieur au seuil de décote, une réduction est appliquée et le montant net à payer est ajusté.
-     */
-    private double calculDecote(double impFoy) {
+        // Calcul de la decote
+        // EXIGENCE : EXG_IMPOT_06
+
         decote = 0;
-        if (partsContribuable == 1 && impFoy < seuilDecoteCelibataire) {
-            decote = decoteMaxCelibataire - (impFoy * tauxDecote);
-        } else if (partsContribuable == 2 && impFoy < seuilDecoteCouple) {
-            decote = decoteMaxCouple - (impFoy * tauxDecote);
+        // decote
+        if ( nbPtsDecl == 1 ) {
+            if ( mImp < seuilDecoteDeclarantSeul ) {
+                 decote = decoteMaxDeclarantSeul - ( mImp  * tauxDecote );
+            }
+        }
+        if (  nbPtsDecl == 2 ) {
+            if ( mImp < seuilDecoteDeclarantCouple ) {
+                 decote =  decoteMaxDeclarantCouple - ( mImp  * tauxDecote  );
+            }
+        }
+        decote = Math.round( decote );
+
+        if ( mImp <= decote ) {
+            decote = mImp;
         }
 
-        decote = Math.round(decote);
-        if (impFoy <= decote) {
-            decote = impFoy;
-        }
+        System.out.println( "Decote : " + decote );
 
-        impFoy -= decote;
-        impFoy += contributionExceptionnelle;
-        impotNet = Math.round(impFoy);
-        return impotNet;
+        mImp = mImp - decote;
+
+        mImp += contribExceptionnelle;
+
+        mImp = Math.round( mImp );
+
+        System.out.println( "Impôt sur le revenu net final : " + mImp );
+        return  (int)mImp;
     }
+
+
+
+
+
 }
