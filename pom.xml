@@ -116,11 +116,11 @@
                                 <rule>
                                     <element>BUNDLE</element> <!-- Vérifie toute l'application -->
                                     <limits>
-                                        <!-- Définit un seuil de couverture des lignes à 80% -->
+                                        <!-- Définit un seuil de couverture des lignes à 90% -->
                                         <limit>
                                             <counter>LINE</counter>
                                             <value>COVEREDRATIO</value>
-                                            <minimum>0.80</minimum>
+                                            <minimum>0.90</minimum>
                                         </limit>
                                     </limits>
                                 </rule>
