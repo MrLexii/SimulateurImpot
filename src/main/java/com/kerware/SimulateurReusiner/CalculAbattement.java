@@ -17,6 +17,7 @@ import com.kerware.simulateur.SituationFamiliale;
  */
 public class CalculAbattement {
 
+    // Variables pour le calcul de l'abattement
     private double abattement;
     private double abattement1;
     private double abattement2;

@@ -25,7 +25,8 @@ public class CalculPartsFiscales {
      * @param parentIsole Vrai si le parent est isolé (éducation d’enfants seul(e))
      * @param nbEnfantsHandicap Nombre d’enfants à charge en situation de handicap
      */
-    public void calculerParts(int nbEnfants, SituationFamiliale situation, boolean parentIsole, int nbEnfantsHandicap) {
+    public void calculerParts(int nbEnfants, SituationFamiliale situation, boolean parentIsole,
+                              int nbEnfantsHandicap) {
         // Initialisation des parts de base selon la situation matrimoniale
         switch (situation) {
             case CELIBATAIRE:
@@ -37,6 +38,8 @@ public class CalculPartsFiscales {
             case PACSE:
                 nbPartsDeclarant = 2;
                 break;
+            default:
+                throw new IllegalArgumentException("Situation familiale inconnue");
         }
 
         // Ajout des parts liées aux enfants

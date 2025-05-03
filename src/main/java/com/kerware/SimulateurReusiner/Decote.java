@@ -18,8 +18,8 @@ public class Decote {
      * Calcule la décote à appliquer si l’impôt brut est inférieur à un seuil.
      * Puis ajoute la CEHR pour obtenir l’impôt net final.
      *
-     * @param impFoy Impôt calculé après quotient familial et plafonnement.
-     * @param nbPartsDeclarant Nombre de parts du ou des déclarants (hors enfants).
+     * @param impFoy               Impôt calculé après quotient familial et plafonnement.
+     * @param nbPartsDeclarant     Nombre de parts du ou des déclarants (hors enfants).
      * @param contributionExceptionnelle Montant de la Contribution Exceptionnelle sur les Hauts Revenus (CEHR).
      * @return Montant de l’impôt net à payer, après application de la décote et ajout de la CEHR.
      *

@@ -19,7 +19,6 @@ import com.kerware.simulateur.SituationFamiliale;
  *
  * <p>Limitation : le simulateur prend en charge jusqu’à 7 enfants maximum.</p>
  */
-
 public class SimulateurReusiner {
 
     // Modules de calcul
@@ -83,74 +82,101 @@ public class SimulateurReusiner {
      * @return Montant de l’impôt net à payer (arrondi à l’entier)
      */
     public int calculerImpot(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
-
         System.out.println("=========== DÉBUT DU CALCUL DE L'IMPÔT ===========");
-        System.out.printf("Entrées : Revenu1 = %d €, Revenu2 = %d €, Situation = %s, Enfants = %d, Enfants handicapés = %d, Parent isolé = %s%n",
-                rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+        afficherEntrees(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
 
-        // ----- Étape 1 : Vérification des entrées -----
-        // EM-000 : Validation des règles métier
-        validations(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
-        
-        // ----- Étape 2 : Initialisation des données internes -----
-        initialisation(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+        // Validation des données d'entrée
+        validerEntrees(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
 
-        // ----- Étape 3 : Calcul de l’abattement de 10% -----
-        // EM-001 : Calcul de l’abattement de 10%
+        // Initialisation des données internes
+        initialiserDonnees(rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+
+        // Étape 1 : Calcul de l'abattement
         calculAbattement.calculerAbattement(revenu1, revenu2, situation);
-        this.abattement = calculAbattement.getAbattement();
-        this.revenuFiscalReference = calculAbattement.getRevenuFiscalRef();
+        abattement = calculAbattement.getAbattement();
+        revenuFiscalReference = calculAbattement.getRevenuFiscalRef();
+        afficherResultatAbattement();
 
-        System.out.printf("→ Abattement total : %.2f €%n", abattement);
-        System.out.printf("→ Revenu fiscal de référence : %.2f €%n", revenuFiscalReference);
-
-        // ----- Étape 4 : Calcul du nombre de parts fiscales -----
-        // EM-002 : Calcul des parts fiscales
+        // Étape 2 : Calcul du nombre de parts fiscales
         calculPartsFiscales.calculerParts(nbEnfants, situation, parentIsole, nbEnfantsHandicap);
-        this.nbPartsDeclarant = calculPartsFiscales.getPartsDeclarant();
-        this.nbPartsFoyerFiscal = calculPartsFiscales.getPartsFoyerFiscal();
+        nbPartsDeclarant = calculPartsFiscales.getPartsDeclarant();
+        nbPartsFoyerFiscal = calculPartsFiscales.getPartsFoyerFiscal();
+        afficherPartsFiscales();
 
-        System.out.printf("→ Parts déclarants : %.2f%n", nbPartsDeclarant);
-        System.out.printf("→ Parts fiscales (totales) : %.2f%n", nbPartsFoyerFiscal);
-
-        // ----- Étape 5 : Calcul de la CEHR -----
-        // EM-004 : Contribution exceptionnelle sur hauts revenus
+        // Étape 3 : Calcul de la contribution exceptionnelle sur les hauts revenus
         calculContributionExceptionnelle.calculerContribution(revenuFiscalReference, nbPartsDeclarant);
-        this.contributionExceptionnelle = calculContributionExceptionnelle.getContributionExceptionnelle();
+        contributionExceptionnelle = calculContributionExceptionnelle.getContributionExceptionnelle();
+        afficherContributionExceptionnelle();
 
-        System.out.printf("→ Contribution exceptionnelle (CEHR) : %.2f €%n", contributionExceptionnelle);
+        // Étape 4 : Calcul de l'impôt avant la décote et le plafonnement
+        impotFoyerFiscalAvantDecote = calculImpots.calculImpôtAvantPlafond(revenuFiscalReference, nbPartsDeclarant);
+        impotFoyerFiscal = calculImpots.calculImpôtFoyer(revenuFiscalReference, nbPartsFoyerFiscal);
+        plafonnerImpotFoyerFiscal();
 
-        // ----- Étape 6 : Impôt sans quotient familial -----
-        // EM-003 : Calcul de l’impôt sans quotient familial (référence)
-        double impDec1 = calculImpots.calculImpôtAvantPlafond(revenuFiscalReference, nbPartsDeclarant);
-        System.out.printf("→ Impôt sans quotient familial : %.2f €%n", impDec1);
-
-        // ----- Étape 7 : Impôt avec quotient familial -----
-        // EM-003 : Calcul de l’impôt avec quotient familial
-        this.impotFoyerFiscal = calculImpots.calculImpôtFoyer(revenuFiscalReference, nbPartsFoyerFiscal);
-        System.out.printf("→ Impôt avec quotient familial : %.2f €%n", this.impotFoyerFiscal);
-
-        // ----- Étape 8 : Plafonnement du quotient familial -----
-        // EM-003 : Application du plafonnement du quotient familial
-        this.impotFoyerFiscal = calculPlafondQuotientFamille.calculPlafonnementQuotientFamilial(
-                impDec1, this.impotFoyerFiscal, nbPartsDeclarant, nbPartsFoyerFiscal);
-
-        System.out.printf("→ Baisse d’impôt (plafonnement) : %.2f €%n", calculPlafondQuotientFamille.getBaisseImpot());
-        System.out.printf("→ Plafond appliqué : %.2f €%n", calculPlafondQuotientFamille.getPlafond());
-        System.out.printf("→ Impôt après plafonnement : %.2f €%n", this.impotFoyerFiscal);
-
-        // ----- Étape 9 : Application de la décote -----
-        // EM-005 : Application de la décote
-        this.impotFoyerFiscal = decote.calculDecote(this.impotFoyerFiscal, nbPartsDeclarant, contributionExceptionnelle);
-        this.variableDecote = decote.getValeur();
-
-        System.out.printf("→ Décote appliquée : %.2f €%n", variableDecote);
-        System.out.printf("→ Impôt net à payer (avec CEHR et décote) : %.2f €%n", this.impotFoyerFiscal);
+        // Étape 5 : Appliquer la décote
+        impotFoyerFiscal = decote.calculDecote(impotFoyerFiscal, nbPartsDeclarant, contributionExceptionnelle);
+        variableDecote = decote.getValeur();
+        afficherResultatFinal();
 
         System.out.println("=========== FIN DU CALCUL ===========\n");
+        return (int) impotFoyerFiscal;
+    }
 
-        // ----- Étape 10 : Retour de l’impôt net -----
-        return (int) this.impotFoyerFiscal;
+    /**
+     * Affiche les entrées pour le calcul de l'impôt.
+     *
+     * @param rev1 Revenu du déclarant principal
+     * @param rev2 Revenu du second déclarant (si applicable)
+     * @param sit Situation familiale
+     * @param enfants Nombre d'enfants à charge
+     * @param enfantsHandicapes Nombre d'enfants handicapés
+     * @param isole Vrai si parent isolé
+     */
+    private void afficherEntrees(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
+        System.out.printf("Entrées : Revenu1 = %d €, Revenu2 = %d €, Situation = %s, Enfants = %d, Enfants handicapés = %d, Parent isolé = %s%n", rev1, rev2, sit, enfants, enfantsHandicapes, isole);
+    }
+
+    /**
+     * Affiche le résultat de l'abattement et du revenu fiscal de référence.
+     */
+    private void afficherResultatAbattement() {
+        System.out.printf("→ Abattement total : %.2f €%n", abattement);
+        System.out.printf("→ Revenu fiscal de référence : %.2f €%n", revenuFiscalReference);
+    }
+
+    /**
+     * Affiche les informations sur les parts fiscales.
+     */
+    private void afficherPartsFiscales() {
+        System.out.printf("→ Parts déclarants : %.2f%n", nbPartsDeclarant);
+        System.out.printf("→ Parts fiscales (totales) : %.2f%n", nbPartsFoyerFiscal);
+    }
+
+    /**
+     * Affiche la contribution exceptionnelle sur les hauts revenus.
+     */
+    private void afficherContributionExceptionnelle() {
+        System.out.printf("→ Contribution exceptionnelle (CEHR) : %.2f €%n", contributionExceptionnelle);
+    }
+
+    /**
+     * Plafonne l'impôt en fonction du quotient familial.
+     */
+    private void plafonnerImpotFoyerFiscal() {
+        impotFoyerFiscal = calculPlafondQuotientFamille.calculPlafonnementQuotientFamilial(
+            impotFoyerFiscalAvantDecote, impotFoyerFiscal, nbPartsDeclarant, nbPartsFoyerFiscal
+        );
+        System.out.printf("→ Baisse d’impôt (plafonnement) : %.2f €%n", calculPlafondQuotientFamille.getBaisseImpot());
+        System.out.printf("→ Plafond appliqué : %.2f €%n", calculPlafondQuotientFamille.getPlafond());
+        System.out.printf("→ Impôt après plafonnement : %.2f €%n", impotFoyerFiscal);
+    }
+
+    /**
+     * Affiche le résultat final de l'impôt après la décote.
+     */
+    private void afficherResultatFinal() {
+        System.out.printf("→ Décote appliquée : %.2f €%n", variableDecote);
+        System.out.printf("→ Impôt net à payer (avec CEHR et décote) : %.2f €%n", impotFoyerFiscal);
     }
 
     /**
@@ -164,21 +190,28 @@ public class SimulateurReusiner {
      * @param isole Parent isolé ?
      * @throws IllegalArgumentException si données incohérentes
      */
-    private void validations(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
-        if (rev1 < 0 || rev2 < 0)
+    private void validerEntrees(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
+        if (rev1 < 0 || rev2 < 0) {
             throw new IllegalArgumentException("Les revenus ne peuvent pas être négatifs.");
-        if (sit == null)
+        }
+        if (sit == null) {
             throw new IllegalArgumentException("La situation familiale est obligatoire.");
-        if (enfants < 0 || enfantsHandicapes < 0)
+        }
+        if (enfants < 0 || enfantsHandicapes < 0) {
             throw new IllegalArgumentException("Le nombre d'enfants ne peut être négatif.");
-        if (enfantsHandicapes > enfants)
+        }
+        if (enfantsHandicapes > enfants) {
             throw new IllegalArgumentException("Les enfants handicapés ne peuvent excéder le nombre total d'enfants.");
-        if (enfants > 7)
+        }
+        if (enfants > 7) {
             throw new IllegalArgumentException("Limite maximale : 7 enfants pris en compte.");
-        if ((sit == SituationFamiliale.MARIE || sit == SituationFamiliale.PACSE) && isole)
+        }
+        if ((sit == SituationFamiliale.MARIE || sit == SituationFamiliale.PACSE) && isole) {
             throw new IllegalArgumentException("Un parent isolé ne peut être marié ou pacsé.");
-        if ((sit == SituationFamiliale.CELIBATAIRE || sit == SituationFamiliale.DIVORCE || sit == SituationFamiliale.VEUF) && rev2 > 0)
+        }
+        if ((sit == SituationFamiliale.CELIBATAIRE || sit == SituationFamiliale.DIVORCE || sit == SituationFamiliale.VEUF) && rev2 > 0) {
             throw new IllegalArgumentException("Un contribuable seul ne peut avoir deux revenus.");
+        }
     }
 
     /**
@@ -191,7 +224,7 @@ public class SimulateurReusiner {
      * @param enfantsHandicapes Nombre d’enfants handicapés
      * @param isole Parent isolé
      */
-    private void initialisation(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
+    private void initialiserDonnees(int rev1, int rev2, SituationFamiliale sit, int enfants, int enfantsHandicapes, boolean isole) {
         this.revenu1 = rev1;
         this.revenu2 = rev2;
         this.nbEnfants = enfants;
