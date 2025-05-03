@@ -44,7 +44,7 @@ public class SimulateurReusiner {
     public double getRevenuReference() {return revenuFiscalReference;}
     public double getDecote() {return variableDecote;}
     public double getAbattement() {return abattement;}
-    public double getNbParts() {return nbPartsDeclarant;}
+    public double getNbPartsFoyerFiscal() {return nbPartsFoyerFiscal;}
     public double getImpotAvantDecote() {return impotFoyerFiscalAvantDecote;}
     public double getImpotNet() {return impotFoyerFiscal;}
     public int getRevenuNetDeclatant1() {return revenu1;}
@@ -59,9 +59,9 @@ public class SimulateurReusiner {
         this.calculAbattement = new CalculAbattement();
         this.calculPartsFiscales = new CalculPartsFiscales();
         this.calculContributionExceptionnelle = new CalculContributionExceptionnelle();
-        this.calculImpots = new CalculImpots(revenuFiscalReference, nbPartsDeclarant, nbPartsFoyerFiscal);
-        this.calculPlafondQuotientFamille = new CalculPlafondQuotientFamille(nbPartsDeclarant, nbPartsFoyerFiscal);
-        this.decote = new Decote(nbPartsDeclarant, contributionExceptionnelle);
+        this.calculImpots = new CalculImpots();
+        this.calculPlafondQuotientFamille = new CalculPlafondQuotientFamille();
+        this.decote = new Decote();
     }
     
     
@@ -92,45 +92,55 @@ public class SimulateurReusiner {
         // Étape 3 : Calcul de l’abattement de 10% (avec plancher/plafond)
         calculAbattement.calculerAbattement(this.revenu1, this.revenu2, this.situation);
 
-        System.out.printf("→ Abattement total : %.2f €%n", calculAbattement.getAbattement());
-        System.out.printf("→ Revenu fiscal de référence : %.2f €%n", calculAbattement.getRevenuFiscalRef());
+        this.abattement = calculAbattement.getAbattement();
+        this.revenuFiscalReference = calculAbattement.getRevenuFiscalRef();
+        
+        System.out.printf("→ Abattement total : %.2f €%n", this.abattement);
+        System.out.printf("→ Revenu fiscal de référence : %.2f €%n", this.revenuFiscalReference);
 
         // Étape 4 : Calcul du nombre de parts fiscales
         calculPartsFiscales.calculerParts(this.nbEnfants, this.situation, this.parentIsole, this.nbEnfantsHandicap);
 
-        System.out.printf("→ Parts contribuable : %.2f%n", calculPartsFiscales.getPartsContribuable());
-        System.out.printf("→ Parts fiscales (après majorations) : %.2f%n", calculPartsFiscales.getPartsFiscales());
+        this.nbPartsDeclarant = calculPartsFiscales.getPartsDeclarant();
+        this.nbPartsFoyerFiscal  = calculPartsFiscales.getPartsFoyerFiscal();
+        
+        System.out.printf("→ Parts Déclarants : %.2f%n", this.nbPartsDeclarant);
+        System.out.printf("→ Parts fiscales (après majorations) : %.2f%n", this.nbPartsFoyerFiscal);
 
         // Étape 5 : Calcul de la contribution exceptionnelle sur les hauts revenus
-        calculContributionExceptionnelle.calculerContribution(this.revenu2, this.nbEnfantsHandicap);
+        calculContributionExceptionnelle.calculerContribution(this.revenuFiscalReference, this.nbPartsDeclarant);
 
-        System.out.printf("→ Contribution exceptionnelle CEHR : %.2f €%n", calculContributionExceptionnelle.getContributionExceptionnelle());
+        this.contributionExceptionnelle = calculContributionExceptionnelle.getContributionExceptionnelle();
+        
+        System.out.printf("→ Contribution exceptionnelle CEHR : %.2f €%n", this.contributionExceptionnelle);
 
         // Étape 6 : Calcul de l’impôt sans plafonnement du quotient familial
-        double impDec1 = calculImpots.calculImpôtAvantPlafond();
+        double impDec1 = calculImpots.calculImpôtAvantPlafond(revenuFiscalReference, nbPartsDeclarant);
 
         System.out.printf("→ Impôt sans quotient familial : %.2f €%n", impDec1);
 
         // Étape 7 : Calcul de l’impôt avec quotient familial
-        double impFoy = calculImpots.calculImpôtFoyer();
+        this.impotFoyerFiscal = calculImpots.calculImpôtFoyer(revenuFiscalReference, nbPartsFoyerFiscal);
 
-        System.out.printf("→ Impôt avec quotient familial : %.2f €%n", impFoy);
+        System.out.printf("→ Impôt avec quotient familial : %.2f €%n", this.impotFoyerFiscal);
 
         // Étape 8 : Appliquer le plafonnement du quotient familial
-        impFoy = calculPlafondQuotientFamille.calculPlafonnementQuotientFamilial(impDec1, impFoy);
+        this.impotFoyerFiscal = calculPlafondQuotientFamille.calculPlafonnementQuotientFamilial(impDec1, this.impotFoyerFiscal, this.nbPartsDeclarant, this.nbPartsFoyerFiscal);
 
-        System.out.printf("→ Impôt après plafonnement quotient familial : %.2f €%n", impFoy);
+        System.out.printf("→ Baisse d'Impôt : %.2f €%n", calculPlafondQuotientFamille.getBaisseImpot());
+        System.out.printf("→ Plafond : %.2f €%n", calculPlafondQuotientFamille.getPlafond());
+        System.out.printf("→ Impôt après plafonnement quotient familial : %.2f €%n", this.impotFoyerFiscal);
 
         // Étape 9 : Appliquer la décote selon la situation
-        double impotFinal = decote.calculDecote(impFoy);
+        this.impotFoyerFiscal = decote.calculDecote(this.impotFoyerFiscal, this.nbPartsDeclarant, this.contributionExceptionnelle);
 
-        System.out.printf("→ Décote appliquée : %.2f €%n", decote);
-        System.out.printf("→ Impôt net à payer (incl. CEHR) : %.2f €%n", impotFinal);
+        System.out.printf("→ Décote appliquée : %.2f €%n", decote.getValeur());
+        System.out.printf("→ Impôt net à payer (incl. CEHR) : %.2f €%n", this.impotFoyerFiscal);
 
         System.out.println("=========== FIN DU CALCUL ===========\n");
         
         // Étape 10 : Retourner le montant final de l’impôt (arrondi)
-        return (int) impotFinal;
+        return (int) this.impotFoyerFiscal;
     }
     
     /**

@@ -78,7 +78,7 @@ public class AdaptateurSimuReus implements ICalculateurImpot {
 
     @Override
     public double getNbPartsFoyerFiscal() {
-        return simulateur.getNbParts();
+        return simulateur.getNbPartsFoyerFiscal();
     }
 
     @Override

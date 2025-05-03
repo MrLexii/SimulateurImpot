@@ -4,8 +4,8 @@ import com.kerware.simulateur.SituationFamiliale;
 
 public class CalculPartsFiscales {
 	
-    private double partsFiscales;
-    private double partsContribuable;
+    private double nbPartsFoyerFiscal;
+    private double nbPartsDeclarant;
 
 	/**
      * Calcule le nombre de parts fiscales du contribuable en fonction de la situation familiale,
@@ -16,59 +16,61 @@ public class CalculPartsFiscales {
      * @param nbEnfantsHandicap Nombre d'enfants handicapés à charge.
      */
     public void calculerParts(int nbEnfants, SituationFamiliale situation, boolean parentIsole, int nbEnfantsHandicap) {
-    	// Base : 1 part ou 2 parts selon la situation
     	switch ( situation ) {
         case CELIBATAIRE:
-        	partsContribuable = 1;
+        	nbPartsDeclarant = 1;
             break;
         case MARIE:
-        	partsContribuable = 2;
+        	nbPartsDeclarant = 2;
             break;
         case DIVORCE:
-        	partsContribuable = 1;
+        	nbPartsDeclarant = 1;
             break;
         case VEUF:
-        	partsContribuable = 1;
+        	nbPartsDeclarant = 1;
             break;
         case PACSE:
-        	partsContribuable = 2;
+        	nbPartsDeclarant = 2;
             break;
-    }
+	    }
+	
+	    // parts enfants à charge
+	    if ( nbEnfants <= 2 ) {
+	    	nbPartsFoyerFiscal = nbPartsDeclarant + nbEnfants * 0.5;
+	    } else if ( nbEnfants > 2 ) {
+	    	nbPartsFoyerFiscal = nbPartsDeclarant+  1.0 + ( nbEnfants - 2 );
+	    }
+	
+	    // parent isolé
+	    if ( parentIsole ) {
+	        if ( nbEnfants > 0 ){
+	        	nbPartsFoyerFiscal = nbPartsFoyerFiscal + 0.5;
+	        }
+	    }
+	
+	    // Veuf avec enfant
+	    if ( situation == SituationFamiliale.VEUF && nbEnfants > 0 ) {
+	    	nbPartsFoyerFiscal = nbPartsFoyerFiscal + 1;
+	    }
+	
+	    // enfant handicapé
+	    nbPartsFoyerFiscal = nbPartsFoyerFiscal + nbEnfantsHandicap * 0.5;
 
-        // Ajout des parts liées aux enfants
-        if (nbEnfants <= 2) {
-            partsFiscales = partsContribuable + nbEnfants * 0.5;
-        } else {
-            partsFiscales = partsContribuable + 1.0 + (nbEnfants - 2);
-        }
-
-        // Majoration pour parent isolé avec enfant
-        if (parentIsole && nbEnfants > 0) {
-            partsFiscales += 0.5;
-        }
-
-        // Majoration pour veuf(ve) avec enfant
-        if (situation == SituationFamiliale.VEUF && nbEnfants > 0) {
-            partsFiscales += 1.0;
-        }
-
-        // Majoration pour enfants handicapés
-        partsFiscales += nbEnfantsHandicap * 0.5;
     }
 
     /**
      * Getter pour obtenir le nombre total de parts fiscales.
      * @return Le nombre total de parts fiscales.
      */
-    public double getPartsFiscales() {
-        return partsFiscales;
+    public double getPartsFoyerFiscal() {
+        return nbPartsFoyerFiscal;
     }
 
     /**
      * Getter pour obtenir le nombre de parts du contribuable (avant les enfants).
      * @return Le nombre de parts du contribuable.
      */
-    public double getPartsContribuable() {
-        return partsContribuable;
+    public double getPartsDeclarant() {
+        return nbPartsDeclarant;
     }
 }
