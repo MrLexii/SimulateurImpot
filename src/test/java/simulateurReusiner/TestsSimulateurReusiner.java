@@ -26,7 +26,7 @@ public class TestsSimulateurReusiner {
 
     public static Stream<Arguments> donneesPartsFoyerFiscal() {
         return Stream.of(
-                Arguments.of(24000, "CELIBATAIRE", 0, 0, false, 1),
+        		Arguments.of(24000, "CELIBATAIRE", 0, 0, false, 1),
                 Arguments.of(24000, "CELIBATAIRE", 1, 0, false, 1.5),
                 Arguments.of(24000, "CELIBATAIRE", 2, 0, false, 2),
                 Arguments.of(24000, "CELIBATAIRE", 3, 0, false, 3),
@@ -34,7 +34,11 @@ public class TestsSimulateurReusiner {
                 Arguments.of(24000, "PACSE", 0, 0, false, 2),
                 Arguments.of(24000, "MARIE", 3, 1, false, 4.5),
                 Arguments.of(24000, "DIVORCE", 2, 0, true, 2.5),
-                Arguments.of(24000, "VEUF", 3, 0, true, 4.5)
+                Arguments.of(24000, "VEUF", 3, 0, true, 4.5),
+                Arguments.of(24000, "CELIBATAIRE", 2, 1, true, 3),
+                Arguments.of(24000, "PACSE", 3, 0, false, 4),
+                Arguments.of(24000, "DIVORCE", 1, 1, true, 2.5),
+                Arguments.of(24000, "VEUF", 2, 2, true, 4.5)
                 );
 
     }
@@ -65,9 +69,16 @@ public class TestsSimulateurReusiner {
 
     public static Stream<Arguments> donneesAbattementFoyerFiscal() {
         return Stream.of(
-                Arguments.of(4900, "CELIBATAIRE", 0, 0, false, 495), // < 495 => 495
-                Arguments.of(12000, "CELIBATAIRE", 0, 0, false, 1200), // 10 %
-                Arguments.of(200000, "CELIBATAIRE", 0, 0, false, 14171) // > 14171 => 14171
+        		Arguments.of(4900, "CELIBATAIRE", 0, 0, false, 495),
+                Arguments.of(12000, "CELIBATAIRE", 0, 0, false, 1200),
+                Arguments.of(200000, "CELIBATAIRE", 0, 0, false, 14171),
+                Arguments.of(10000, "CELIBATAIRE", 0, 0, false, 1000),
+                Arguments.of(141710, "CELIBATAIRE", 0, 0, false, 14171),
+                Arguments.of(4940, "CELIBATAIRE", 0, 0, false, 495),
+                Arguments.of(4950, "CELIBATAIRE", 0, 0, false, 495),
+                Arguments.of(4960, "CELIBATAIRE", 0, 0, false, 496),
+                Arguments.of(1417100, "CELIBATAIRE", 0, 0, false, 14171),
+                Arguments.of(0, "CELIBATAIRE", 0, 0, false, 495)
         );
 
     }
@@ -97,11 +108,26 @@ public class TestsSimulateurReusiner {
 
     public static Stream<Arguments> donneesRevenusFoyerFiscal() {
         return Stream.of(
-                Arguments.of(12000, "CELIBATAIRE", 0, 0, false, 0), // 0%
-                Arguments.of(20000, "CELIBATAIRE", 0, 0, false, 199), // 11%
-                Arguments.of(35000, "CELIBATAIRE", 0, 0, false, 2736 ), // 30%
-                Arguments.of(95000, "CELIBATAIRE", 0, 0, false, 19284), // 41%
-                Arguments.of(200000, "CELIBATAIRE", 0, 0, false, 60768) // 45%
+        		 Arguments.of(12000, "CELIBATAIRE", 0, 0, false, 0),
+                 Arguments.of(20000, "CELIBATAIRE", 0, 0, false, 199),
+                 Arguments.of(35000, "CELIBATAIRE", 0, 0, false, 2736),
+                 Arguments.of(95000, "CELIBATAIRE", 0, 0, false, 19284),
+                 Arguments.of(200000, "CELIBATAIRE", 0, 0, false, 60768),
+                 Arguments.of(25000, "CELIBATAIRE", 0, 0, false, 918),
+                 Arguments.of(50000, "CELIBATAIRE", 0, 0, false, 6786),
+                 Arguments.of(100000, "CELIBATAIRE", 0, 0, false, 21129),
+                 Arguments.of(150000, "CELIBATAIRE", 0, 0, false, 39919),
+                 Arguments.of(175000, "CELIBATAIRE", 0, 0, false, 50169),
+                 Arguments.of(110000, "MARIE", 0, 0, false, 16124),
+                 Arguments.of(60000, "MARIE", 0, 0, false, 3401),
+                 Arguments.of(20000, "MARIE", 0, 0, false, 0),
+                 Arguments.of(15000, "MARIE", 0, 0, false, 0),
+                 Arguments.of(250000, "MARIE", 0, 0, false, 64944),
+                 Arguments.of(12000, "MARIE", 0, 0, false, 0),
+                 Arguments.of(12000, "PACSE", 0, 0, false, 0),
+                 Arguments.of(12000, "VEUF", 0, 0, false, 0),
+                 Arguments.of(35000, "DIVORCE", 1, 0, true, 550),
+                 Arguments.of(95000, "MARIE", 2, 1, false, 6797)
         );
 
     }
@@ -132,17 +158,21 @@ public class TestsSimulateurReusiner {
 
     public static Stream<Arguments> donneesRobustesse() {
         return Stream.of(
-                Arguments.of(-1, 0,"CELIBATAIRE", 0, 0, false), // 0%
-                Arguments.of(20000,0, null , 0, 0, false), // 11%
-                Arguments.of(35000,0, "CELIBATAIRE", -1, 0, false ), // 30%
-                Arguments.of(95000,0, "CELIBATAIRE", 0, -1, false), // 41%
-                Arguments.of(200000,0, "CELIBATAIRE", 3, 4, false, 60768),
-                Arguments.of(200000,0, "MARIE", 3, 2, true),
-                Arguments.of(200000,0, "PACSE", 3, 2, true),
-                Arguments.of(200000,0, "MARIE", 8, 0, false),
-                Arguments.of(200000,10000, "CELIBATAIRE", 8, 0, false),
-                Arguments.of(200000,10000, "VEUF", 8, 0, false),
-                Arguments.of(200000,10000, "DIVORCE", 8, 0, false)
+        		Arguments.of(-1, 0, "CELIBATAIRE", 0, 0, false),
+                Arguments.of(20000, 0, null, 0, 0, false),
+                Arguments.of(35000, 0, "CELIBATAIRE", -1, 0, false),
+                Arguments.of(95000, 0, "CELIBATAIRE", 0, -1, false),
+                Arguments.of(200000, 0, "CELIBATAIRE", 3, 4, false),
+                Arguments.of(200000, 0, "MARIE", 3, 2, true),
+                Arguments.of(200000, 0, "PACSE", 3, 2, true),
+                Arguments.of(200000, 0, "MARIE", 8, 0, false),
+                Arguments.of(200000, 10000, "CELIBATAIRE", 8, 0, false),
+                Arguments.of(200000, 10000, "VEUF", 8, 0, false),
+                Arguments.of(200000, 10000, "DIVORCE", 8, 0, false),
+                Arguments.of(Integer.MAX_VALUE, 10000, "MARIE", 8, 0, false),
+                Arguments.of(Integer.MIN_VALUE, 10000, "PACSE", 2, 0, false),
+                Arguments.of(10000, 10000, "CELIBATAIRE", Integer.MAX_VALUE, 0, false),
+                Arguments.of(10000, 10000, "CELIBATAIRE", 0, Integer.MAX_VALUE, false)
         );
     }
 
